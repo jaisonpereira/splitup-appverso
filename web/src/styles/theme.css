@@ -1,0 +1,69 @@
+﻿:root {
+  --color-background: #f5f6fa;
+  --color-surface: rgba(255, 255, 255, 0.72);
+  --color-surface-elevated: rgba(255, 255, 255, 0.9);
+  --color-text-primary: #1c1f2a;
+  --color-text-secondary: #5b6270;
+  --color-border: rgba(20, 24, 36, 0.12);
+  --color-accent: #6d5ce7;
+  --color-accent-hover: #5c4dde;
+
+  --color-success: #2f8b6b;
+  --color-danger: #cf5e5e;
+  --color-warning: #d39b3a;
+  --color-info: #3a7bcb;
+
+  --gradient-surface: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(255, 255, 255, 0.75)
+  );
+  --gradient-accent: linear-gradient(
+    135deg,
+    rgba(109, 92, 231, 0.22),
+    rgba(109, 92, 231, 0.06)
+  );
+
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --shadow-sm: 0 6px 16px rgba(14, 20, 38, 0.08);
+  --shadow-md: 0 12px 30px rgba(14, 20, 38, 0.12);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+
+  --blur-sm: 8px;
+  --blur-md: 14px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+
+  --font-family: system-ui, -apple-system, "SF Pro Text", "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 2rem;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.7;
+
+  --focus-ring: 0 0 0 3px rgba(109, 92, 231, 0.35);
+}

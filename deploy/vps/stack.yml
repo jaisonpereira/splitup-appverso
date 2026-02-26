@@ -1,0 +1,60 @@
+services:
+  splitup-web:
+    image: ghcr.io/${GHCR_NAMESPACE:-jaisonpereira}/splitup-web:${IMAGE_TAG:-prod}
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.splitup.appverso.com.br}
+    networks:
+      - KaraokeNet
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.swarm.network=KaraokeNet
+        - traefik.http.routers.splitup-web.entrypoints=websecure
+        - traefik.http.routers.splitup-web.rule=Host(`splitup.appverso.com.br`)
+        - traefik.http.routers.splitup-web.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.splitup-web.service=splitup-web
+        - traefik.http.services.splitup-web.loadbalancer.server.port=3000
+
+  splitup-api:
+    image: ghcr.io/${GHCR_NAMESPACE:-jaisonpereira}/splitup-api:${IMAGE_TAG:-prod}
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-5000}
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-https://splitup.appverso.com.br}
+      APP_URL: ${APP_URL:-https://splitup.appverso.com.br}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@splitup.appverso.com.br}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
+    command:
+      - /bin/sh
+      - -lc
+      - npx prisma migrate deploy --schema=api/prisma/schema.prisma && node api/dist/index.js
+    networks:
+      - KaraokeNet
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.swarm.network=KaraokeNet
+        - traefik.http.routers.splitup-api.entrypoints=websecure
+        - traefik.http.routers.splitup-api.rule=Host(`api.splitup.appverso.com.br`)
+        - traefik.http.routers.splitup-api.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.splitup-api.service=splitup-api
+        - traefik.http.services.splitup-api.loadbalancer.server.port=5000
+
+networks:
+  KaraokeNet:
+    external: true

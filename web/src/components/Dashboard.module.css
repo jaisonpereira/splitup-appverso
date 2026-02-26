@@ -1,0 +1,63 @@
+﻿.headerActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.metricRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.metricValue {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+}
+
+.metricLabel {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-secondary);
+}
+
+.inlineBadges {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.helperText {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.panelGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: var(--space-4);
+}
+
+.listBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.footerActions {
+  margin-top: var(--space-3);
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 960px) {
+  .panelGrid {
+    grid-template-columns: 1fr;
+  }
+}

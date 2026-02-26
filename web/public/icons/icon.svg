@@ -1,0 +1,11 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#1976d2"/>
+  <g fill="#ffffff">
+    <!-- Ícone de divisão/split -->
+    <path d="M150 100 L150 300 L200 350 L200 150 Z" opacity="0.9"/>
+    <path d="M362 212 L362 412 L312 462 L312 262 Z" opacity="0.9"/>
+    
+    <!-- Símbolo de dinheiro -->
+    <text x="256" y="280" font-size="140" font-weight="bold" text-anchor="middle" font-family="Arial, sans-serif">$</text>
+  </g>
+</svg>

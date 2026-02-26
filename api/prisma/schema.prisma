@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  password      String?   // Nullable para usuários OAuth
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relações
+  accounts                Account[]
+  emailVerificationTokens EmailVerificationToken[]
+  groups                  UserGroup[]
+  expenses                Expense[]
+  paymentsFrom            Payment[] @relation("PaymentsFrom")
+  paymentsTo              Payment[] @relation("PaymentsTo")
+
+  @@map("users")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_tokens")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String  // oauth, email
+  provider          String  // google, facebook, credentials
+  providerAccountId String?
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Group {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  category    String?  @default("outros")
+  image       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members  UserGroup[]
+  expenses Expense[]
+  invites  GroupInvite[]
+
+  @@map("groups")
+}
+
+model UserGroup {
+  id        String   @id @default(uuid())
+  userId    String
+  groupId   String
+  role      String   @default("member") // admin, member
+  joinedAt  DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@map("user_groups")
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  description String
+  amount      Float
+  category    String?
+  groupId     String
+  paidById    String
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  group    Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  paidBy   User      @relation(fields: [paidById], references: [id])
+  splits   ExpenseSplit[]
+  payments Payment[]
+
+  @@map("expenses")
+}
+
+model ExpenseSplit {
+  id        String @id @default(uuid())
+  expenseId String
+  userId    String
+  amount    Float
+  settled   Boolean @default(false)
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@map("expense_splits")
+}
+
+model Payment {
+  id        String   @id @default(uuid())
+  amount    Float
+  fromId    String
+  toId      String
+  expenseId String?
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  from    User     @relation(fields: [fromId], references: [id], name: "PaymentsFrom")
+  to      User     @relation(fields: [toId], references: [id], name: "PaymentsTo")
+  expense Expense? @relation(fields: [expenseId], references: [id])
+
+  @@map("payments")
+}
+
+model GroupInvite {
+  id        String   @id @default(uuid())
+  token     String   @unique @default(uuid())
+  groupId   String
+  createdBy String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("group_invites")
+}

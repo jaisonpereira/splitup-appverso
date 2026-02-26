@@ -1,0 +1,59 @@
+﻿.glass-card,
+.glass-card-light,
+.glass-paper {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-sm) !important;
+  backdrop-filter: blur(var(--blur-md));
+  -webkit-backdrop-filter: blur(var(--blur-md));
+}
+
+.glass-card-light {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.glass-paper {
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-md) !important;
+}
+
+.glass-card .MuiDivider-root,
+.glass-card-light .MuiDivider-root,
+.glass-paper .MuiDivider-root {
+  border-color: var(--color-border) !important;
+}
+
+.glass-card input,
+.glass-card textarea,
+.glass-card-light input,
+.glass-card-light textarea,
+.glass-paper input,
+.glass-paper textarea {
+  color: inherit !important;
+}
+
+/* MUI inputs: remove square focus ring and match rounded corners */
+.MuiOutlinedInput-root {
+  border-radius: var(--radius-lg) !important;
+}
+
+.MuiOutlinedInput-notchedOutline {
+  border-radius: var(--radius-lg) !important;
+}
+
+.MuiOutlinedInput-root.Mui-focused {
+  box-shadow: var(--focus-ring);
+}
+
+.MuiOutlinedInput-input:focus-visible {
+  box-shadow: none;
+}
+
+/* Keep the floating label readable on focus ring */
+.MuiInputLabel-outlined {
+  background: var(--color-surface-elevated);
+  padding: 0 6px;
+  z-index: 1;
+  border-radius: var(--radius-sm);
+}

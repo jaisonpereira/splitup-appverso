@@ -1,0 +1,21 @@
+{
+  "name": "splitup-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SplitUp - Monorepo with Next.js frontend and Express backend",
+  "workspaces": [
+    "web",
+    "api"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "dev:web": "npm run dev --workspace=web",
+    "dev:api": "npm run dev --workspace=api",
+    "build": "npm run build --workspace=web && npm run build --workspace=api",
+    "build:web": "npm run build --workspace=web",
+    "build:api": "npm run build --workspace=api"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

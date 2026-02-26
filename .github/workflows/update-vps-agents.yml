@@ -1,0 +1,51 @@
+name: Update VPS AGENTS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update-agents:
+    name: Refresh /opt/AGENTS.md on VPS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Upload and execute inventory script
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new \
+            deploy/vps/scripts/generate-vps-agents.sh \
+            "${VPS_USER}@${VPS_HOST}:/tmp/generate-vps-agents.sh"
+
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new "${VPS_USER}@${VPS_HOST}" '
+            set -euo pipefail
+            chmod +x /tmp/generate-vps-agents.sh
+            /tmp/generate-vps-agents.sh
+            rm -f /tmp/generate-vps-agents.sh
+
+            if command -v sudo >/dev/null 2>&1; then
+              sudo test -f /opt/AGENTS.md
+              sudo head -n 30 /opt/AGENTS.md
+            else
+              test -f /opt/AGENTS.md
+              head -n 30 /opt/AGENTS.md
+            fi
+          '

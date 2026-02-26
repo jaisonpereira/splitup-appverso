@@ -1,0 +1,66 @@
+name: Bootstrap Host PostgreSQL
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-db:
+    name: Create splitup_db on host PostgreSQL
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Upload SQL bootstrap file
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new \
+            deploy/vps/sql/create_splitup_db.sql \
+            "${VPS_USER}@${VPS_HOST}:/tmp/create_splitup_db.sql"
+
+      - name: Execute bootstrap SQL and validate database
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new "${VPS_USER}@${VPS_HOST}" '
+            set -euo pipefail
+
+            psql_cmd=()
+            if command -v sudo >/dev/null 2>&1; then
+              psql_cmd=(sudo -u postgres psql)
+            elif command -v runuser >/dev/null 2>&1; then
+              psql_cmd=(runuser -u postgres -- psql)
+            else
+              echo "[ERROR] sudo/runuser não disponíveis para executar psql como postgres" >&2
+              exit 1
+            fi
+
+            "${psql_cmd[@]}" -v ON_ERROR_STOP=1 -f /tmp/create_splitup_db.sql
+
+            if ! "${psql_cmd[@]}" -tAc "SELECT 1 FROM pg_database WHERE datname='splitup_db'" | grep -q "1"; then
+              echo "[ERROR] Database splitup_db não encontrado após bootstrap" >&2
+              exit 1
+            fi
+
+            echo "[INFO] splitup_db pronto no PostgreSQL do host"
+            rm -f /tmp/create_splitup_db.sql
+          '
