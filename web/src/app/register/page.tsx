@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Box,
@@ -17,7 +17,7 @@ import {
 import { useApi } from "@/hooks/useApi";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const api = useApi();
@@ -210,5 +210,13 @@ export default function RegisterPage() {
         </Paper>
       </Box>
     </Container>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<Container maxWidth="xs">Carregando...</Container>}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

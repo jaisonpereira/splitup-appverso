@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Box,
@@ -17,7 +17,7 @@ import {
 import { useApi } from "@/hooks/useApi";
 import GoogleAuthButton from "@/components/GoogleAuthButton";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const api = useApi();
@@ -164,5 +164,13 @@ export default function LoginPage() {
         </Paper>
       </Box>
     </Container>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<Container maxWidth="xs">Carregando...</Container>}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

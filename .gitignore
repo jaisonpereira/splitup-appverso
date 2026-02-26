@@ -10,6 +10,8 @@ node_modules/
 api/dist/
 web/.next/
 web/out/
+web/public/sw.js
+web/public/workbox-*.js
 coverage/
 **/*.tsbuildinfo
 .cache/

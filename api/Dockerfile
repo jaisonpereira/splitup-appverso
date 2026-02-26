@@ -12,8 +12,8 @@ COPY package.json package-lock.json ./
 COPY api/package.json api/
 COPY --from=deps /app/node_modules /app/node_modules
 COPY api ./api
-RUN npm run build --workspace=api
 RUN npx prisma generate --schema=api/prisma/schema.prisma
+RUN npm run build --workspace=api
 
 FROM node:20-alpine AS runtime
 WORKDIR /app
