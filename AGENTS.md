@@ -24,3 +24,11 @@ Este repositório usa workflows do GitHub Actions e Portainer para deploy do Spl
 - O inventário operacional deve ser mantido em `/opt/AGENTS.md` dentro da VPS.
 - Esse arquivo é gerado/atualizado por `deploy/vps/scripts/generate-vps-agents.sh` via workflow.
 - O workflow de deploy pode sincronizar o conteúdo de `vps.env` para `/opt/splitup/vps.env` usando o secret `VPS_ENV_FILE`.
+
+## Vínculo entre AGENTS (repo <-> VPS)
+- AGENTS do projeto: `AGENTS.md` (este arquivo).
+- AGENTS da VPS: `/opt/AGENTS.md`.
+- O `/opt/AGENTS.md` deve sempre apontar de volta para este arquivo (`AGENTS.md`) e para o repositório.
+- Sempre que houver mudança de infraestrutura/stack, atualizar ambos os lados:
+  - localmente neste arquivo; e
+  - na VPS via workflow `Update VPS AGENTS` (ou execução direta do script `deploy/vps/scripts/generate-vps-agents.sh`).

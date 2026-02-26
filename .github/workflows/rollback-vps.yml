@@ -1,0 +1,312 @@
+name: Rollback VPS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  packages: read
+
+concurrency:
+  group: deploy-vps-main
+  cancel-in-progress: false
+
+jobs:
+  resolve-target:
+    name: Resolve Previous Successful Deploy
+    runs-on: ubuntu-latest
+    outputs:
+      current_sha: ${{ steps.resolve.outputs.current_sha }}
+      target_sha: ${{ steps.resolve.outputs.target_sha }}
+      current_run_id: ${{ steps.resolve.outputs.current_run_id }}
+      target_run_id: ${{ steps.resolve.outputs.target_run_id }}
+      current_run_url: ${{ steps.resolve.outputs.current_run_url }}
+      target_run_url: ${{ steps.resolve.outputs.target_run_url }}
+
+    steps:
+      - name: Resolve previous successful deploy
+        id: resolve
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const workflowId = 'deploy-vps.yml';
+
+            const { data } = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: workflowId,
+              branch: 'main',
+              status: 'completed',
+              per_page: 50,
+            });
+
+            const successfulRuns = data.workflow_runs.filter((run) => run.conclusion === 'success');
+            core.info(`Successful runs found: ${successfulRuns.length}`);
+
+            if (successfulRuns.length < 2) {
+              core.setFailed('Rollback requires at least 2 successful runs of deploy-vps.yml on main.');
+              return;
+            }
+
+            const currentRun = successfulRuns[0];
+            const targetRun = successfulRuns[1];
+
+            core.setOutput('current_sha', currentRun.head_sha);
+            core.setOutput('target_sha', targetRun.head_sha);
+            core.setOutput('current_run_id', String(currentRun.id));
+            core.setOutput('target_run_id', String(targetRun.id));
+            core.setOutput('current_run_url', currentRun.html_url);
+            core.setOutput('target_run_url', targetRun.html_url);
+
+            core.info(`Current deploy SHA: ${currentRun.head_sha} (run ${currentRun.id})`);
+            core.info(`Rollback target SHA: ${targetRun.head_sha} (run ${targetRun.id})`);
+
+      - name: Show rollback target
+        run: |
+          echo "Current SHA: ${{ steps.resolve.outputs.current_sha }}"
+          echo "Target SHA:  ${{ steps.resolve.outputs.target_sha }}"
+          echo "Current run: ${{ steps.resolve.outputs.current_run_id }}"
+          echo "Target run:  ${{ steps.resolve.outputs.target_run_id }}"
+
+  rollback-deploy:
+    name: Rollback on VPS
+    runs-on: ubuntu-latest
+    needs: resolve-target
+    env:
+      CURRENT_SHA: ${{ needs.resolve-target.outputs.current_sha }}
+      TARGET_SHA: ${{ needs.resolve-target.outputs.target_sha }}
+      CURRENT_RUN_ID: ${{ needs.resolve-target.outputs.current_run_id }}
+      TARGET_RUN_ID: ${{ needs.resolve-target.outputs.target_run_id }}
+      CURRENT_RUN_URL: ${{ needs.resolve-target.outputs.current_run_url }}
+      TARGET_RUN_URL: ${{ needs.resolve-target.outputs.target_run_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image namespace
+        id: ns
+        run: |
+          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate rollback images exist
+        env:
+          GHCR_NAMESPACE: ${{ steps.ns.outputs.owner }}
+        run: |
+          set -euo pipefail
+
+          WEB_IMAGE="ghcr.io/${GHCR_NAMESPACE}/splitup-web:${TARGET_SHA}"
+          API_IMAGE="ghcr.io/${GHCR_NAMESPACE}/splitup-api:${TARGET_SHA}"
+
+          echo "[INFO] Checking image: ${WEB_IMAGE}"
+          docker manifest inspect "${WEB_IMAGE}" >/dev/null
+
+          echo "[INFO] Checking image: ${API_IMAGE}"
+          docker manifest inspect "${API_IMAGE}" >/dev/null
+
+          echo "[INFO] Rollback images found in GHCR"
+
+      - name: Prepare SSH key
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Deploy rollback via SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_NAMESPACE: ${{ steps.ns.outputs.owner }}
+        run: |
+          set -euo pipefail
+
+          : "${VPS_HOST:?VPS_HOST is required}"
+          : "${VPS_USER:?VPS_USER is required}"
+
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new \
+            deploy/vps/stack.yml \
+            "${VPS_USER}@${VPS_HOST}:/opt/splitup/stack.yml"
+
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new "${VPS_USER}@${VPS_HOST}" \
+            "GHCR_USER='${GHCR_USER}' GHCR_TOKEN='${GHCR_TOKEN}' GHCR_NAMESPACE='${GHCR_NAMESPACE}' TARGET_SHA='${TARGET_SHA}' bash -s" <<'EOSSH'
+            set -euo pipefail
+
+            if [ ! -f /opt/splitup/vps.env ]; then
+              echo "[ERROR] /opt/splitup/vps.env não encontrado." >&2
+              exit 1
+            fi
+
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            set -a
+            . /opt/splitup/vps.env
+            set +a
+
+            export GHCR_NAMESPACE="$GHCR_NAMESPACE"
+            export IMAGE_TAG="$TARGET_SHA"
+
+            docker stack deploy --with-registry-auth -c /opt/splitup/stack.yml splitup
+            docker service ls --format '{{.Name}} {{.Replicas}}' | grep '^splitup_' || true
+          EOSSH
+
+      - name: Validate splitup services replicas
+        id: services
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+
+          attempts=30
+          sleep_seconds=10
+          ready=false
+          final_rows=""
+
+          for i in $(seq 1 "$attempts"); do
+            rows="$(ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new "${VPS_USER}@${VPS_HOST}" "docker service ls --format '{{.Name}} {{.Replicas}}' | grep '^splitup_' || true")"
+
+            if [ -z "$rows" ]; then
+              echo "[WARN] Nenhum serviço splitup encontrado ($i/$attempts)"
+              sleep "$sleep_seconds"
+              continue
+            fi
+
+            echo "[INFO] splitup services ($i/$attempts):"
+            echo "$rows"
+
+            all_ready=true
+            while IFS=' ' read -r service replicas; do
+              [ -n "$service" ] || continue
+
+              if [[ ! "$replicas" =~ ^([0-9]+)/([0-9]+)$ ]]; then
+                all_ready=false
+                break
+              fi
+
+              running="${BASH_REMATCH[1]}"
+              desired="${BASH_REMATCH[2]}"
+
+              if [ "$desired" -eq 0 ] || [ "$running" -ne "$desired" ]; then
+                all_ready=false
+              fi
+            done <<< "$rows"
+
+            if [ "$all_ready" = true ]; then
+              ready=true
+              final_rows="$rows"
+              break
+            fi
+
+            final_rows="$rows"
+            sleep "$sleep_seconds"
+          done
+
+          if [ "$ready" != true ]; then
+            echo "[ERROR] Serviços splitup não ficaram prontos após rollback." >&2
+            echo "$final_rows"
+            exit 1
+          fi
+
+          {
+            echo "replicas<<EOF"
+            echo "$final_rows"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Wait for health endpoints
+        id: health
+        run: |
+          set -euo pipefail
+
+          check_url() {
+            local url="$1"
+            local attempts=30
+            local sleep_seconds=10
+            local code=""
+
+            for i in $(seq 1 "$attempts"); do
+              code="$(curl -k -L -sS -o /dev/null --max-time 10 -w '%{http_code}' "$url" || true)"
+
+              if [ "$code" = "200" ]; then
+                echo "[INFO] Healthy: $url" >&2
+                printf '%s' "$code"
+                return 0
+              fi
+
+              echo "[INFO] Waiting for $url ($i/$attempts), last status: ${code:-ERR}" >&2
+              sleep "$sleep_seconds"
+            done
+
+            echo "[ERROR] Healthcheck failed for $url, last status: ${code:-ERR}" >&2
+            return 1
+          }
+
+          web_status="$(check_url "https://splitup.appverso.com.br")"
+          api_status="$(check_url "https://api.splitup.appverso.com.br/status")"
+          checked_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+          echo "web_status=$web_status" >> "$GITHUB_OUTPUT"
+          echo "api_status=$api_status" >> "$GITHUB_OUTPUT"
+          echo "checked_at=$checked_at" >> "$GITHUB_OUTPUT"
+
+      - name: Update /opt/AGENTS.md on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new \
+            deploy/vps/scripts/generate-vps-agents.sh \
+            "${VPS_USER}@${VPS_HOST}:/tmp/generate-vps-agents.sh"
+
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=accept-new "${VPS_USER}@${VPS_HOST}" '
+            set -euo pipefail
+            chmod +x /tmp/generate-vps-agents.sh
+            /tmp/generate-vps-agents.sh
+            rm -f /tmp/generate-vps-agents.sh
+            if command -v sudo >/dev/null 2>&1; then
+              sudo test -f /opt/AGENTS.md
+              sudo head -n 20 /opt/AGENTS.md
+            else
+              test -f /opt/AGENTS.md
+              head -n 20 /opt/AGENTS.md
+            fi
+          '
+
+      - name: Publish rollback summary
+        if: always()
+        run: |
+          {
+            echo "## Rollback Summary"
+            echo
+            echo "- Current SHA before rollback: \`${CURRENT_SHA}\`"
+            echo "- Rolled back to SHA: \`${TARGET_SHA}\`"
+            echo "- Current deploy run ID: \`${CURRENT_RUN_ID}\`"
+            echo "- Rollback target run ID: \`${TARGET_RUN_ID}\`"
+            echo "- Current run URL: ${CURRENT_RUN_URL}"
+            echo "- Target run URL: ${TARGET_RUN_URL}"
+            echo "- splitup services replicas:"
+            echo
+            echo '```'
+            echo "${{ steps.services.outputs.replicas || 'n/a' }}"
+            echo '```'
+            echo "- Healthcheck splitup.appverso.com.br: \`${{ steps.health.outputs.web_status || 'n/a' }}\`"
+            echo "- Healthcheck api.splitup.appverso.com.br/status: \`${{ steps.health.outputs.api_status || 'n/a' }}\`"
+            echo "- Checked at (UTC): \`${{ steps.health.outputs.checked_at || 'n/a' }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
