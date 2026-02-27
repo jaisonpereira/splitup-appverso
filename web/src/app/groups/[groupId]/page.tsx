@@ -128,6 +128,26 @@ export default function GroupDetailsPage() {
     singleDebtor: "",
     date: new Date().toISOString().split("T")[0],
   });
+  const currentUser = (() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const userData = localStorage.getItem("user");
+    if (!userData) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(userData) as { id?: string } | null;
+    } catch {
+      return null;
+    }
+  })();
+  const currentUserId = currentUser?.id;
+  const currentUserBalance = balances.find(
+    (balance) => balance.userId === currentUserId,
+  );
 
   useEffect(() => {
     if (groupId) {
@@ -612,19 +632,9 @@ export default function GroupDetailsPage() {
       )}
 
       {/* Balance Summary */}
-      {balances.length > 0 &&
-        (() => {
-          const userData = localStorage.getItem("user");
-          const currentUser = userData ? JSON.parse(userData) : null;
-          const userBalance = balances.find(
-            (b) => b.userId === currentUser?.id,
-          );
-
-          if (userBalance) {
-            return <BalanceSummary balance={userBalance.balance} />;
-          }
-          return null;
-        })()}
+      {currentUserBalance && (
+        <BalanceSummary balance={currentUserBalance.balance} />
+      )}
 
       <Box
         sx={{
@@ -663,7 +673,7 @@ export default function GroupDetailsPage() {
       </Box>
 
       {/* Balance Details Section */}
-      {balances.length > 0 && (
+      {currentUserBalance && (
         <Card
           className="glass-card"
           sx={{
@@ -676,29 +686,29 @@ export default function GroupDetailsPage() {
             </Typography>
             <Divider sx={{ my: 2 }} />
             <List>
-              {balances.map((balance) => {
-                const userData = localStorage.getItem("user");
-                const currentUser = userData ? JSON.parse(userData) : null;
-                const isCurrentUser = balance.userId === currentUser?.id;
+              {balances
+                .filter((balance) => balance.userId === currentUserId)
+                .map((balance) => {
+                  const isCurrentUser = true;
 
-                return (
-                  <ListItem
-                    className="glass-card-light"
-                    key={balance.userId}
-                    sx={{
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      mb: 2,
-                      p: 2,
-                      backgroundColor: isCurrentUser
-                        ? "rgba(25, 118, 210, 0.2) !important"
-                        : undefined,
-                      borderRadius: 1,
-                      border: isCurrentUser
-                        ? "1px solid rgba(25, 118, 210, 0.4) !important"
-                        : undefined,
-                    }}
-                  >
+                  return (
+                    <ListItem
+                      className="glass-card-light"
+                      key={balance.userId}
+                      sx={{
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        mb: 2,
+                        p: 2,
+                        backgroundColor: isCurrentUser
+                          ? "rgba(25, 118, 210, 0.2) !important"
+                          : undefined,
+                        borderRadius: 1,
+                        border: isCurrentUser
+                          ? "1px solid rgba(25, 118, 210, 0.4) !important"
+                          : undefined,
+                      }}
+                    >
                     <Box
                       sx={{
                         display: "flex",
@@ -846,9 +856,9 @@ export default function GroupDetailsPage() {
                         ))}
                       </Box>
                     )}
-                  </ListItem>
-                );
-              })}
+                    </ListItem>
+                  );
+                })}
             </List>
           </CardContent>
         </Card>
