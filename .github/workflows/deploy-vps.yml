@@ -118,12 +118,14 @@ jobs:
 
           if [ "$redeploy_done" = "false" ]; then
             if [ -n "${PORTAINER_URL:-}" ] && [ -n "${PORTAINER_STACK_ID:-}" ] && [ -n "${PORTAINER_ENDPOINT_ID:-}" ] && [ -n "${PORTAINER_API_TOKEN:-}" ]; then
-              curl -fsS -X PUT \
+              if curl -fsS -X PUT \
                 -H "X-API-Key: ${PORTAINER_API_TOKEN}" \
-                "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID}/git/redeploy?endpointId=${PORTAINER_ENDPOINT_ID}"
-
-              redeploy_done=true
-              echo "[INFO] Portainer API redeploy accepted."
+                "${PORTAINER_URL}/api/stacks/${PORTAINER_STACK_ID}/git/redeploy?endpointId=${PORTAINER_ENDPOINT_ID}"; then
+                redeploy_done=true
+                echo "[INFO] Portainer API redeploy accepted."
+              else
+                echo "[WARN] Portainer API redeploy failed. Will use SSH fallback."
+              fi
             else
               echo "[WARN] Portainer API fallback not configured. Will use SSH fallback."
             fi
