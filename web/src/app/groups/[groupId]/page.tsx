@@ -652,13 +652,11 @@ export default function GroupDetailsPage() {
         <ExpensesList
           expenses={group.expenses}
           onAddExpense={() => {
-            const userData = localStorage.getItem("user");
-            const currentUser = userData ? JSON.parse(userData) : null;
-            if (currentUser) {
+            if (currentUserId) {
               setExpenseForm({
                 description: "",
                 amount: "",
-                paidById: currentUser.id,
+                paidById: currentUserId,
                 category: "",
                 splitType: "equal",
                 selectedMembers: [],
@@ -879,10 +877,8 @@ export default function GroupDetailsPage() {
             <Divider sx={{ my: 2 }} />
             <List>
               {payments.map((payment: any) => {
-                const userData = localStorage.getItem("user");
-                const currentUser = userData ? JSON.parse(userData) : null;
-                const isFromCurrentUser = payment.from.id === currentUser?.id;
-                const isToCurrentUser = payment.to.id === currentUser?.id;
+                const isFromCurrentUser = payment.from.id === currentUserId;
+                const isToCurrentUser = payment.to.id === currentUserId;
 
                 return (
                   <ListItem
@@ -1141,11 +1137,7 @@ export default function GroupDetailsPage() {
                 required
               >
                 {group?.members
-                  .filter((m) => {
-                    const userData = localStorage.getItem("user");
-                    const currentUser = userData ? JSON.parse(userData) : null;
-                    return m.user.id !== currentUser?.id;
-                  })
+                  .filter((m) => m.user.id !== currentUserId)
                   .map((member) => (
                     <MenuItem key={member.user.id} value={member.user.id}>
                       {member.user.name}
@@ -1231,16 +1223,9 @@ export default function GroupDetailsPage() {
                   <Box>
                     <Typography variant="body1">
                       {selectedExpense.paidBy.name}
-                      {(() => {
-                        const userData = localStorage.getItem("user");
-                        if (userData) {
-                          const user = JSON.parse(userData);
-                          if (user.id === selectedExpense.paidBy.id) {
-                            return " (você)";
-                          }
-                        }
-                        return "";
-                      })()}
+                      {selectedExpense.paidBy.id === currentUserId
+                        ? " (você)"
+                        : ""}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       {selectedExpense.paidBy.email}
@@ -1269,16 +1254,9 @@ export default function GroupDetailsPage() {
                     >
                       <Typography variant="body2">
                         {selectedExpense.paidBy.name}
-                        {(() => {
-                          const userData = localStorage.getItem("user");
-                          if (userData) {
-                            const user = JSON.parse(userData);
-                            if (user.id === selectedExpense.paidBy.id) {
-                              return " (você)";
-                            }
-                          }
-                          return "";
-                        })()}{" "}
+                        {selectedExpense.paidBy.id === currentUserId
+                          ? " (você)"
+                          : ""}{" "}
                         tem a receber:
                       </Typography>
                       <Typography variant="h6" fontWeight="bold">
@@ -1294,12 +1272,7 @@ export default function GroupDetailsPage() {
 
                     <List>
                       {selectedExpense.splits.map((split: any) => {
-                        const userData = localStorage.getItem("user");
-                        let isCurrentUser = false;
-                        if (userData) {
-                          const user = JSON.parse(userData);
-                          isCurrentUser = user.id === split.user?.id;
-                        }
+                        const isCurrentUser = currentUserId === split.user?.id;
                         return (
                           <ListItem key={split.id} disablePadding>
                             <ListItemAvatar>
