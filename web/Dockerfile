@@ -7,7 +7,9 @@ RUN npm ci --workspace=web --include-workspace-root
 FROM node:20-alpine AS build
 WORKDIR /app
 ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 COPY package.json package-lock.json ./
 COPY web/package.json web/
 COPY --from=deps /app/node_modules /app/node_modules

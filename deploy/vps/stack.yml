@@ -27,6 +27,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL:-https://splitup.appverso.com.br}
       APP_URL: ${APP_URL:-https://splitup.appverso.com.br}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}

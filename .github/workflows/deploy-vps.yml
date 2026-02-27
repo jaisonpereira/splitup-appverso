@@ -52,6 +52,7 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_API_URL=https://api.splitup.appverso.com.br
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.WEB_NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
           tags: |
             ghcr.io/${{ steps.meta.outputs.owner }}/splitup-web:prod
             ghcr.io/${{ steps.meta.outputs.owner }}/splitup-web:${{ steps.meta.outputs.sha_tag }}

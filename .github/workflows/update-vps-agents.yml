@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   update-agents:
-    name: Refresh /opt/AGENTS.md on VPS
+    name: Refresh /opt/AGENTS.md on VPS (post-deploy)
     runs-on: ubuntu-latest
 
     steps:
